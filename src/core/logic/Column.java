@@ -28,21 +28,20 @@ public class Column {
 
     public Object convertValidate(String rawValue) {
         try {
-            switch (type) {
-                case INT:
-                    return DataType.INT.parse(rawValue);
-                case FLOAT:
-                    return DataType.FLOAT.parse(rawValue);
-                case STRING:
-                    return DataType.STRING.parse(rawValue);
-                case BOOLEAN:
-                    return DataType.BOOLEAN.parse(rawValue);
-                case DATE:
-                    return DataType.DATE.parse(rawValue);
-            }
+            return this.type.parse(rawValue);
         } catch (Exception e) {
             throw new IllegalArgumentException(String.format("Can not convert %s into %s", rawValue, this.type));
         }
-        return null;
+    }
+
+
+    public boolean validate(String rawValue) {
+        if (rawValue == null) return false;
+        try {
+            this.type.parse(rawValue);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
