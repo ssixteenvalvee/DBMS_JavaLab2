@@ -2,6 +2,7 @@ package core.logic;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class Row {
     private LinkedHashMap<String, Object> rowValues = new LinkedHashMap<>();
@@ -28,5 +29,21 @@ public class Row {
     @Override
     public String toString() {
         return rowValues.toString();
+    }
+
+    public int size() {
+        return this.rowValues.size();
+    }
+
+    @Override
+    public boolean equals(Object r) {
+        if (this == r) return true;
+        if (r == null || getClass() != r.getClass()) return false;
+        return Objects.equals(this.getRowValues(), ((Row) r).getRowValues());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.rowValues);
     }
 }

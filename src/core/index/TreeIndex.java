@@ -45,21 +45,20 @@ public class TreeIndex implements Index {
     }
 
     /**
+     *
      */
     @Override
-    public Row get(Object key, Row toGet) {
-        ArrayList<Row> result = tree.getOrDefault(key, null);
-        if (result == null) {
+    public ArrayList<Row> get(Object key, Row toGet) {
+        ArrayList<Row> rows = tree.getOrDefault(key, null);
+        ArrayList<Row> result = new ArrayList<>();
+        if (rows == null) {
             throw new IllegalArgumentException("[TREEIDX] Exception: No such key: " + key);
         }
-
-        int index = result.indexOf(toGet);
-
-        if (index == -1) {
-            throw new NoSuchElementException("Nothing to get in the row with: " + toGet);
+        for (Row r : rows) {
+            if (r.equals(toGet)) {
+                result.add(r);
+            }
         }
-
-        return result.get(index);
+        return result;
     }
-
 }
