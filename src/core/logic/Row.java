@@ -6,6 +6,7 @@ import java.util.Map;
 public class Row {
     private LinkedHashMap<String, Object> rowValues = new LinkedHashMap<>();
 
+    // constructor
     public Row() {
         this.rowValues = new LinkedHashMap<>();
     }

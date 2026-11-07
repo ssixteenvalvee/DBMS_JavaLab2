@@ -43,7 +43,7 @@ public enum DataType {
             if (v.equals("true") || v.equals("false")) {
                 return Boolean.parseBoolean(v);
             }
-            throw new IllegalArgumentException("Неверное логическое значение: " + value);
+            throw new IllegalArgumentException("Invalid logical value: " + value);
         }
     };
     public abstract Object parse(String value);

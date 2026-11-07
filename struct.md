@@ -1,7 +1,7 @@
-src/main/java/ru/youruniversity/autosalon/
+src/
 │
 ├── core/                  // Внутренняя логика СУБД
-│   ├── model/             // Сущности данных и Метаданные
+│   ├── logic/             // Сущности данных и Метаданные
 │   │   ├── Database.java  // Хранит таблицы (cars и car_details)
 │   │   ├── Table.java     // Хранит строки, схему колонок и индексы
 │   │   ├── Column.java    // Метаданные (name, DataType, isPrimaryKey)
@@ -30,6 +30,6 @@ src/main/java/ru/youruniversity/autosalon/
 │   └── JsonStorageManager.java // Сохраняет таблицы в cars.json и car_details.json
 │
 └── ui/                    // Графический интерфейс
-├── App.java           // Главный класс запуска программы
-├── MainController.java// Контроллер: берет текст из UI -> в парсер -> в движок -> обновляет UI
-└── MainView.java      // Окно с текстовым полем для SQL и JTable/TableView для вывода
+    ├── App.java           // Главный класс запуска программы
+    ├── MainController.java// Контроллер: берет текст из UI -> в парсер -> в движок -> обновляет UI
+    └── MainView.java      // Окно с текстовым полем для SQL и JTable/TableView для вывода
