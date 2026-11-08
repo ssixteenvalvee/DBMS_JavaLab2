@@ -9,7 +9,7 @@ TreeMap это дерево, а поиск по дереву(если оно б�
  */
 
 public class TreeIndex implements Index {
-    public TreeMap<Object, ArrayList<Row>> tree = new TreeMap<>();
+    public TreeMap<Object, ArrayList<Row>> tree;
 
     public TreeIndex(Comparator<Object> comparator) {
         this.tree = new TreeMap<>(comparator);
@@ -48,17 +48,11 @@ public class TreeIndex implements Index {
      *
      */
     @Override
-    public ArrayList<Row> get(Object key, Row toGet) {
+    public ArrayList<Row> get(Object key) {
         ArrayList<Row> rows = tree.getOrDefault(key, null);
-        ArrayList<Row> result = new ArrayList<>();
         if (rows == null) {
-            throw new IllegalArgumentException("[TREEIDX] Exception: No such key: " + key);
+            return new ArrayList<>();
         }
-        for (Row r : rows) {
-            if (r.equals(toGet)) {
-                result.add(r);
-            }
-        }
-        return result;
+        return new ArrayList<>(rows);
     }
 }

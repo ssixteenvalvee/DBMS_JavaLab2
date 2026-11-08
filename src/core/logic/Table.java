@@ -29,7 +29,7 @@ public class Table {
         this.nextId = nextId;
     }
 
-    public String getPrimaryKeyColumnName() { // perhaps it is better to make it with Column c : scheme.getValues()
+    public String getPrimaryKeyColumnName() {
         for (Map.Entry<String, Column> entry : scheme.entrySet()) {
             if (entry.getValue().isPk()) {
                 return entry.getKey();
@@ -51,39 +51,69 @@ public class Table {
     }
 
     public void addRow(Row toAdd) {
-        // add edge-cases here later
-        if (scheme.size() != toAdd.size()) {
-            throw new IllegalArgumentException("[TABLE] Non-matching row");
-        }
-        for (Map.Entry<String, Column> entry : scheme.entrySet()) {
-            String columName = entry.getKey();
-            Column col = entry.getValue();
-            Object value = toAdd.get(columName); // .get is written as a method for Row
+        String pk = getPrimaryKeyColumnName();
+        if (pk == null)
+            throw new IllegalStateException("Table has no PK column");
+        if (scheme.get(pk).getType() != DataType.INT)
+            throw new IllegalStateException("Autoincrement requires INT PK: " + pk);
 
-            if (!col.validate(value.toString())) {
-                throw new IllegalArgumentException();
-            }
+        // data — mutable map inside Row
+        LinkedHashMap<String, Object> data = toAdd.getRow();
+
+        // extra columns check
+        for (String key : data.keySet()) {
+            if (!scheme.containsKey(key))
+                throw new IllegalArgumentException("Unknown column: " + key);
         }
 
-        String pkColumnName = getPrimaryKeyColumnName(); // метод ищет колонку с isPrimaryKey=true
-        if (pkColumnName != null) {
-            Object newKeyValue = toAdd.get(pkColumnName);
-            for (Row existingRow : rows) {
-                if (newKeyValue != null && newKeyValue.equals(existingRow.get(pkColumnName))) {
-                    throw new IllegalArgumentException("[TABLE] non-unique Primary Key: " + newKeyValue);
-                }
-            }
+        // if some columns are absent -> make them null
+        for (String col : scheme.keySet()) {
+            data.putIfAbsent(col, null);
+        }
+
+        // type check; null == "not given"
+        for (Map.Entry<String, Column> e : scheme.entrySet()) {
+            Object v = data.get(e.getKey());
+            if (v == null) continue;
+            if (!e.getValue().accepts(v))
+                throw new IllegalArgumentException("Unacceptable argument is given: " + e.getValue());
+            if (!e.getClass().isInstance(v))
+                throw new IllegalArgumentException(
+                        "Bad type in column '" + e.getKey() + "': expected "
+                                + e.getValue().getType() + ", got " + v.getClass().getSimpleName());
+        }
+
+        // id++ or unique check. User can both give and not give their own PK.
+        Object newKey = data.get(pk);
+        if (newKey == null) { // if user didn't give
+            while (pkInUse(nextId)) nextId++;
+            newKey = nextId;
+            data.put(pk, newKey); // update in row
+            nextId++;
         } else {
-            throw new IllegalArgumentException("column name is null");
+            int asInt = (Integer) newKey;
+            if (asInt < 1)
+                throw new IllegalArgumentException("PK must be >= 1, got: " + asInt);
+            if (pkInUse(asInt))
+                throw new IllegalArgumentException("PK duplicate: " + asInt);
+            if (asInt >= nextId) nextId = asInt + 1;
         }
-
         rows.add(toAdd);
-        for (Map.Entry<String, Index> entry : indexes.entrySet()) {
-            String columnName = entry.getKey(); // gives Col's name. e.g. "price"
-            Index tree = entry.getValue(); // gives TreeMap currently
-            Object valueForIndex = toAdd.get(columnName); // Object valueForIndex = row.get("price") == 25000
 
-            tree.put(valueForIndex, toAdd); // 25000 -> Row, where price is 25000
+        // update idx only for not-null values
+        // (TreeMap w/ natural ordering throws NPE on null-key)
+        for (Map.Entry<String, Index> entry : indexes.entrySet()) {
+            Object valueForIndex = data.get(entry.getKey());
+            if (valueForIndex != null)
+                entry.getValue().put(valueForIndex, toAdd);
         }
+    }
+
+    private boolean pkInUse(Object key) {
+        String pk = getPrimaryKeyColumnName();
+        for (Row r : rows) {
+            if (key.equals(r.getRow().get(pk))) return true;
+        }
+        return false;
     }
 }

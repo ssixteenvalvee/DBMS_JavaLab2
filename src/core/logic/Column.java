@@ -2,6 +2,8 @@ package core.logic;
 
 // immutable for some reason.
 
+import java.time.LocalDate;
+
 public class Column {
     private final String colName; // carName, horsepower, available adn etc
     private final DataType type; // INT, FLOAT and etc.
@@ -34,7 +36,6 @@ public class Column {
         }
     }
 
-
     public boolean validate(String rawValue) {
         if (rawValue == null) return false;
         try {
@@ -42,6 +43,18 @@ public class Column {
             return true;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    public boolean accepts(Object value) { // validator
+        if (value == null) return true;
+        switch (this.type) {
+            case INT:     return value instanceof Integer;
+            case FLOAT:   return value instanceof Double;
+            case STRING:  return value instanceof String;
+            case DATE:    return value instanceof LocalDate;
+            case BOOLEAN: return value instanceof Boolean;
+            default: throw new IllegalStateException("Unknown type: " + this.type);
         }
     }
 }
