@@ -54,3 +54,13 @@ src/
                     Проверяет типы данных.      Ищет совпадения по ID.     Обновляет/ищет строки
                     Превращает текст в Java-     Добавляет/удаляет строки   в TreeMap за O(log n).
                     объекты (INT, DATE...).     из внутреннего списка.
+===============================================
+
+Row:      LinkedHashMap<String, Object>          // поле → значение
+Table.indexes: LinkedHashMap<String, Index>      // имя колонки → индекс
+Index (TreeIndex): TreeMap<Object, ArrayList<Row>>  // значение поля → строки с этим значением
+
+поле row и имя колонки должны быть одинаковыми:
+scheme: { "id" → Column, "brand" → Column, "price" → Column }
+row:    { "id" → 1,      "brand" → "Toyota", "price" → 25000.0 }
+↑ одно и то же имя

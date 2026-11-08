@@ -3,6 +3,7 @@ package core.logic;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import core.index.*;
 
@@ -115,5 +116,50 @@ public class Table {
             if (key.equals(r.getRow().get(pk))) return true;
         }
         return false;
+    }
+
+    /*
+    deletes certain row from the table and updates the idx
+    toRemove is got by the link. The only responsibility is to remove the certain row and update info
+    return true if deleted (for safety)
+     */
+    public boolean removeRow(Row toRemove) {
+        int id = -1;
+        for (int i = 0; i < this.rows.size(); i++) {
+            if (this.rows.get(i) == toRemove) {
+                id = i;
+                break;
+            }
+        }
+        if (id < 0) {
+            id = rows.indexOf(toRemove);
+        }
+        if (id < 0) {
+            return false;
+        }
+
+        Row toDelete = rows.remove(id); // no longer in the rows, but still in indexes
+
+        for (Map.Entry<String, Index> entry : indexes.entrySet()) { // Index == TreeMap rn
+            /*
+            toDelete is a row -> we get the row -> the row is LinkedHashMap<String, Object>
+            String is the name if FIELD/COL (id, carName, price etc,)
+            We GET the value of COLUMN with GET(COLUMN NAME), where entry.getKey() is the COLUMN NAME.
+
+            e.g.
+            Row = {id:3, brand:Audi, price:25000};
+            e.getKey() = 'price'
+            toDelete.get(e.getKey()) = 25000;
+            ( toDelete.getRow().get(e,getKey()) )
+             */
+            Object key = toDelete.get(entry.getKey());
+            if (key == null) continue; // null ignored
+            try {
+                entry.getValue().remove(key, toDelete);
+            } catch (NoSuchElementException | IllegalArgumentException ex) {
+                System.err.println("[TABLE] deletion problem with TreeMap: " + entry.getKey() + " key= " + key + ": " + ex.getMessage());
+            }
+        }
+        return true;
     }
 }
