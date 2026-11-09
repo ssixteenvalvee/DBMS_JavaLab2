@@ -1,11 +1,10 @@
 package core.logic;
 
+import core.index.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-
-import core.index.*;
 
 public class Table {
     public final String tableName; // cars, vegetables etc.
@@ -14,9 +13,12 @@ public class Table {
     private final LinkedHashMap<String, Index> indexes; // <Column.getColName, TreeIndex>
     private int nextId;
 
+    public static final String PK_COL = "id";
+
     public Table(String name, LinkedHashMap<String, Column> scheme) {
         this.tableName = name;
         this.scheme = scheme;
+        validatePk();
         this.rows = new ArrayList<>();
         this.indexes = new LinkedHashMap<>();
         this.nextId = 1;
@@ -25,18 +27,25 @@ public class Table {
     public Table(String name, LinkedHashMap<String, Column> hm, ArrayList<Row> rows, LinkedHashMap<String, Index> indecies, int nextId) {
         this.tableName = name;
         this.scheme = hm;
+        validatePk();
         this.rows = rows;
         this.indexes = indecies;
-        this.nextId = nextId;
+        int maxId = rows.stream().mapToInt(r -> (Integer) r.getRow().get(PK_COL)).max().orElse(0);
+        this.nextId = Math.max(nextId, maxId + 1);
     }
 
+    private void validatePk() {
+    Column idCol = scheme.get(PK_COL);
+    if (idCol == null)
+        throw new IllegalArgumentException("Scheme must contain '" + PK_COL + "'");
+    if (idCol.getType() != DataType.INT)
+        throw new IllegalArgumentException("'" + PK_COL + "' must be INT");
+    if (!idCol.isPk())
+        throw new IllegalArgumentException("'" + PK_COL + "' must be marked PRIMARY KEY");
+}
+
     public String getPrimaryKeyColumnName() {
-        for (Map.Entry<String, Column> entry : scheme.entrySet()) {
-            if (entry.getValue().isPk()) {
-                return entry.getKey();
-            }
-        }
-        return null;
+        return PK_COL;
     }
 
     public void addCol(String key, Column col) {
@@ -48,11 +57,15 @@ public class Table {
     }
 
     public LinkedHashMap<String, Column> getScheme() {
-        return scheme;
+        return this.scheme;
+    }
+
+    public ArrayList<Row> getRows() {
+        return this.rows;
     }
 
     public void addRow(Row toAdd) {
-        String pk = getPrimaryKeyColumnName();
+        String pk = PK_COL;
         if (pk == null)
             throw new IllegalStateException("Table has no PK column");
         if (scheme.get(pk).getType() != DataType.INT)
@@ -78,10 +91,6 @@ public class Table {
             if (v == null) continue;
             if (!e.getValue().accepts(v))
                 throw new IllegalArgumentException("Unacceptable argument is given: " + e.getValue());
-            if (!e.getClass().isInstance(v))
-                throw new IllegalArgumentException(
-                        "Bad type in column '" + e.getKey() + "': expected "
-                                + e.getValue().getType() + ", got " + v.getClass().getSimpleName());
         }
 
         // id++ or unique check. User can both give and not give their own PK.
@@ -111,7 +120,7 @@ public class Table {
     }
 
     private boolean pkInUse(Object key) {
-        String pk = getPrimaryKeyColumnName();
+        String pk = PK_COL;
         for (Row r : rows) {
             if (key.equals(r.getRow().get(pk))) return true;
         }
@@ -161,5 +170,63 @@ public class Table {
             }
         }
         return true;
+    }
+
+    public void updateRow(Row target, LinkedHashMap<String, Object> newValues) {
+        // validate the newVal
+        if (!rows.contains(target)) {
+            throw new IllegalArgumentException("Target does not exist in this table");
+        }
+        if (newValues == null) {
+            throw new IllegalArgumentException("Did not get the values to update");
+        }
+        if (newValues.isEmpty()) {
+            return;
+        }
+
+        for (String col : newValues.keySet()) {
+            if (!scheme.containsKey(col)) {
+                throw new IllegalArgumentException("Unknown column: " + col);
+            }
+        }
+
+        for (Map.Entry<String, Object> entry : newValues.entrySet()) { // key - FIELD, value - real value
+            Object val = entry.getValue();
+            if (val == null) {
+                continue;
+            }
+            Column col = scheme.get(entry.getKey());
+            if (!col.accepts(val)) {
+                throw new IllegalArgumentException("Wrong type in column " + entry.getKey());
+            }
+        }
+
+        if (newValues.containsKey(PK_COL) && newValues.get(PK_COL) != null) {
+            throw new IllegalArgumentException("ID is immutable");
+        }
+
+        // update
+        LinkedHashMap<String, Object> oldIndexedValues = new LinkedHashMap<>();
+        for (String col : newValues.keySet()) {
+            if (indexes.containsKey(col)) {
+                oldIndexedValues.put(col, target.getRow().get(col));
+            }
+        }
+        for (Map.Entry<String, Object> entry : oldIndexedValues.entrySet()) {
+            if (entry.getValue() != null) {
+                indexes.get(entry.getKey()).remove(entry.getValue(), target);
+            }
+        }
+        for (Map.Entry<String, Object> entry : newValues.entrySet()) {
+            if (entry.getValue() != null) {
+                target.getRow().put(entry.getKey(), entry.getValue());
+            }
+        }
+        for (String col : oldIndexedValues.keySet()) {
+            Object newVal = target.getRow().get(col);
+            if (newVal != null) {
+                indexes.get(col).put(newVal, target);
+            }
+        }
     }
 }
