@@ -2,7 +2,6 @@ package core.service;
 
 public class DatabaseEngine {
 
-
     public void update() {
 
     }
@@ -13,5 +12,9 @@ public class DatabaseEngine {
 
     public void delete() {
         
+    }
+
+    public Object select() {
+
     }
 }
