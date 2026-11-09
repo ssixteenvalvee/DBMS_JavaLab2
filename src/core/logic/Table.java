@@ -35,14 +35,14 @@ public class Table {
     }
 
     private void validatePk() {
-    Column idCol = scheme.get(PK_COL);
-    if (idCol == null)
-        throw new IllegalArgumentException("Scheme must contain '" + PK_COL + "'");
-    if (idCol.getType() != DataType.INT)
-        throw new IllegalArgumentException("'" + PK_COL + "' must be INT");
-    if (!idCol.isPk())
-        throw new IllegalArgumentException("'" + PK_COL + "' must be marked PRIMARY KEY");
-}
+        Column idCol = scheme.get(PK_COL);
+        if (idCol == null)
+            throw new IllegalArgumentException("Scheme must contain '" + PK_COL + "'");
+        if (idCol.getType() != DataType.INT)
+            throw new IllegalArgumentException("'" + PK_COL + "' must be INT");
+        if (!idCol.isPk())
+            throw new IllegalArgumentException("'" + PK_COL + "' must be marked PRIMARY KEY");
+    }
 
     public String getPrimaryKeyColumnName() {
         return PK_COL;
@@ -62,6 +62,22 @@ public class Table {
 
     public ArrayList<Row> getRows() {
         return this.rows;
+    }
+
+    public String getName() {
+        return this.tableName;
+    }
+
+    public void createIndex(String colName) {
+        Column col = scheme.get(colName);
+        if (col == null) {
+            throw new IllegalArgumentException("fuck you.");
+        }
+        if (indexes.containsKey(colName)) {
+            throw new IllegalArgumentException("Index already exists: " + colName);
+        }
+        
+        Index tree = new TreeIndex(col.getType().comparator());
     }
 
     public void addRow(Row toAdd) {
