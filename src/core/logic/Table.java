@@ -48,6 +48,17 @@ public class Table {
         return PK_COL;
     }
 
+    public boolean hasIndex(String column) {
+        return indexes.containsKey(column);
+    }
+    public Index getIndex(String column) {
+        Index idx = indexes.get(column);
+        if (idx == null) {
+            throw new IllegalArgumentException("No index on column: " + column);
+        }
+        return idx;
+    }
+
     public void addCol(String key, Column col) {
         this.scheme.put(key, col);
     }
