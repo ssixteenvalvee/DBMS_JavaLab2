@@ -7,7 +7,7 @@ import java.util.NoSuchElementException;
 public class Database {
     private final LinkedHashMap<String, Table> tables = new LinkedHashMap<>();
 
-    public void CreateTable(Table t) {
+    public void createTable(Table t) {
         this.tables.put(t.tableName, t);
         System.out.println("[DB] CREATE TABLE OK.");
     }

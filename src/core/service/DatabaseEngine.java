@@ -6,6 +6,7 @@ import core.logic.Row;
 import core.logic.Table;
 import parser.cmd.DeleteCmd;
 import parser.cmd.InsertCmd;
+import parser.cmd.SelectCmd;
 import parser.cmd.UpdateCmd;
 import storage.StorageManager;
 
@@ -23,8 +24,8 @@ public class DatabaseEngine {
         this.storage = st;
     }
 
-    public int update(UpdateCmd cmd) {
-        Table t = db.getTable(cmd.getTableName());
+    public QResult update(UpdateCmd cmd) {
+        Table t = db.getTable(cmd.table());
         LinkedHashMap<String, Column> scheme = t.getScheme();
         //
         String whereCol = cmd.getWhereCol();
@@ -33,9 +34,7 @@ public class DatabaseEngine {
         //
         LinkedHashMap<String, Object> toSet_HM = cmd.getSetValues();
 
-        boolean allNull = (whereCol == null) && (whereOp == null) && (whereVal == null);
-        boolean anyNull = (whereCol == null) || (whereOp == null) || (whereVal == null);
-        if (allNull != anyNull) {
+        if (!validateWhere(whereCol, whereOp, whereVal)) {
             throw new IllegalArgumentException("WHERE: col/op/value must be all null or all set");
         }
 
@@ -60,7 +59,7 @@ public class DatabaseEngine {
         }
         if (toUpdate.isEmpty()) {
             System.out.println("[DBENG] update: noting to update");
-            return 0;
+            return new QResult(true, "Nothing updated");
         }
         ArrayList<Row> updateTargets = resolveWhere(t, whereCol, whereOp, whereVal);
         int cnt = 0;
@@ -68,21 +67,19 @@ public class DatabaseEngine {
             t.updateRow(r, toUpdate);
             cnt++;
         }
-        return cnt;
+        return new QResult(true, "Updated: " + cnt);
     }
 
-    public void insert(InsertCmd cmd) {
-        String tableName = cmd.table();
-        ArrayList<String> columns = cmd.getColumns();
+    public QResult insert(InsertCmd cmd) {
+        Table t = this.db.getTable(cmd.table());
         Row values = cmd.getValues();
-
-        Table t = this.db.getTable(tableName);
         LinkedHashMap<String, Column> scheme = t.getScheme();
-        ArrayList<String> cols = new ArrayList<>(scheme.keySet());
+        ArrayList<String> columns = cmd.getColumns();
+        ArrayList<String> cols = (columns != null && !columns.isEmpty() ? columns : new ArrayList<>(scheme.keySet()));
 
-        for (String colStr : cols) {
-            if (!scheme.containsKey(colStr)) {
-                throw new NoSuchElementException("");
+        for (String col : cols) {
+            if (!scheme.containsKey(col)) {
+                throw new NoSuchElementException("Unknown column: " + col);
             }
         }
         if (values.getRow().size() != cols.size()) {
@@ -92,7 +89,7 @@ public class DatabaseEngine {
         Row r = new Row();
         for (String colName : cols) {
             Column col = scheme.get(colName);
-            Object raw = values.get(colName);
+            Object raw = values.getRow().get(colName);
             if (raw == null) {
                 r.getRow().put(colName, null);
                 continue;
@@ -108,18 +105,17 @@ public class DatabaseEngine {
         t.addRow(r);
         //storage.save(this.db); -> move to Controller!
         System.out.println("insert ok");
+        return new QResult(true, "Inserted 1 row");
     }
 
-    public void delete(DeleteCmd cmd) {
+    public QResult delete(DeleteCmd cmd) {
+        String msg;
         try {
-            boolean noWhere = (cmd.getWhereCol() == null);
-            boolean noOp    = (cmd.getWhereOp() == null);
-            boolean noVal   = (cmd.getWhereVal() == null);
-            if (noWhere != noOp || noWhere != noVal) {
-                throw new IllegalArgumentException("All null or all set");
+            if (!validateWhere(cmd.getWhereCol(), cmd.getWhereOp(), cmd.getWhereVal())) {
+                throw new IllegalArgumentException("WHERE: col/op/value must be all null or all set");
             }
 
-            Table t = db.getTable(cmd.getTableName());
+            Table t = db.getTable(cmd.table());
             ArrayList<Row> targets = resolveWhere(t, cmd.getWhereCol(), cmd.getWhereOp(), cmd.getWhereVal());
             ArrayList<Row> toDelete = new ArrayList<>(targets);
             int deleted = 0;
@@ -130,15 +126,52 @@ public class DatabaseEngine {
             }
             //storage.save(db);
             System.out.println("Deleted: " + deleted);
+            msg = "Deleted " + deleted;
         } catch (NoSuchElementException | IllegalArgumentException e) {
             throw new IllegalArgumentException("Delete failed: " + e.getMessage());
         }
+        return new QResult(true, msg);
     }
 
 
-    public Object select() {
+    public QResult select(SelectCmd cmd) {
+        Table t = db.getTable(cmd.table());
+        LinkedHashMap<String, Column> scheme = t.getScheme();
+        ArrayList<String> cols = cmd.getColumns();
+        LinkedHashMap<String, Column> resultScheme = new LinkedHashMap<>();
 
-        return null;
+        if (cols == null || cols.isEmpty()) {
+            throw new IllegalArgumentException("SELECT: columns have ot be given");
+        }
+
+        String whereCol = cmd.getWhereCol();
+        String whereOp = cmd.getWhereOp();
+        Object whereVal = cmd.getWhereVal();
+        if (!validateWhere(whereCol, whereOp, whereVal)) {
+            throw new IllegalArgumentException("WHERE: col/op/val must be all null or all set");
+        }
+
+        boolean isStar = ("*".equals(cols.getFirst()));
+        if (isStar) {
+            resultScheme.putAll(scheme);
+        } else {
+            for (String col : cols) {
+                Column c = scheme.get(col);
+                if (c == null) {throw new IllegalArgumentException("Unknown column: " + col);}
+                resultScheme.put(col, scheme.get(col));
+            }
+        }
+
+        ArrayList<Row> toSelect = resolveWhere(t, whereCol, whereOp, whereVal);
+        ArrayList<Row> resultRows = new ArrayList<>();
+        for (Row r : toSelect) {
+            LinkedHashMap<String, Object> res = new LinkedHashMap<>();
+            for (String col : resultScheme.keySet()) {
+                res.put(col, r.getRow().get(col));
+            }
+            resultRows.add(new Row(res));
+        }
+        return new QResult(true, "ok", resultRows, resultScheme);
     }
 
     public void createTable() {
@@ -179,6 +212,15 @@ public class DatabaseEngine {
             case "<=": return cmp <= 0;
             default: throw new IllegalArgumentException("Unknown operation: " + op);
         }
+    }
+
+    public boolean validateWhere(String whereCol, String whereOp, Object whereVal) {
+        boolean allNull = (whereCol == null) && (whereOp == null) && (whereVal == null);
+        boolean anyNull = (whereCol == null) || (whereOp == null) || (whereVal == null);
+        if (allNull != anyNull) {
+            return false;
+        }
+        return true;
     }
 }
 
