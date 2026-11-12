@@ -4,28 +4,71 @@ import core.logic.Column;
 import core.logic.Database;
 import core.logic.Row;
 import core.logic.Table;
-import parser.cmd.Command;
 import parser.cmd.DeleteCmd;
 import parser.cmd.InsertCmd;
-import storage.StorageManeger;
+import parser.cmd.UpdateCmd;
+import storage.StorageManager;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.concurrent.locks.Condition;
 
 public class DatabaseEngine {
-    private Database db;
-    private StorageManeger storage;
+    private final Database db;
+    private final StorageManager storage;
 
-    DatabaseEngine(Database database, StorageManeger st) {
+    DatabaseEngine(Database database, StorageManager st) {
         this.db = database;
         this.storage = st;
     }
 
-    public void update() {
+    public int update(UpdateCmd cmd) {
+        Table t = db.getTable(cmd.getTableName());
+        LinkedHashMap<String, Column> scheme = t.getScheme();
+        //
+        String whereCol = cmd.getWhereCol();
+        String whereOp = cmd.getWhereOp();
+        Object whereVal = cmd.getWhereVal();
+        //
+        LinkedHashMap<String, Object> toSet_HM = cmd.getSetValues();
 
+        boolean allNull = (whereCol == null) && (whereOp == null) && (whereVal == null);
+        boolean anyNull = (whereCol == null) || (whereOp == null) || (whereVal == null);
+        if (allNull != anyNull) {
+            throw new IllegalArgumentException("WHERE: col/op/value must be all null or all set");
+        }
+
+        if (toSet_HM.isEmpty()) {
+            throw new IllegalArgumentException("There is noting to update with");
+        }
+        LinkedHashMap<String, Object> toUpdate = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : toSet_HM.entrySet()) {
+            String colName = entry.getKey();
+            Column col = scheme.get(colName);
+            if (col == null) {
+                throw new IllegalArgumentException("Unknown column: " + colName);
+            }
+            if (Table.PK_COL.equals(colName)) {
+                throw new IllegalArgumentException("Primary Key is immutable. Don't touch!");
+            }
+
+            Object raw = entry.getValue();
+            if (raw == null) {continue;}
+            Object typed = col.accepts(raw) ? raw : col.convertValidate(raw.toString());
+            toUpdate.put(colName, typed);
+        }
+        if (toUpdate.isEmpty()) {
+            System.out.println("[DBENG] update: noting to update");
+            return 0;
+        }
+        ArrayList<Row> updateTargets = resolveWhere(t, whereCol, whereOp, whereVal);
+        int cnt = 0;
+        for (Row r : updateTargets) {
+            t.updateRow(r, toUpdate);
+            cnt++;
+        }
+        return cnt;
     }
 
     public void insert(InsertCmd cmd) {
@@ -43,7 +86,7 @@ public class DatabaseEngine {
             }
         }
         if (values.getRow().size() != cols.size()) {
-            throw new IllegalArgumentException("Row and col sizes are not mathcing");
+            throw new IllegalArgumentException("Row and col sizes are not matching");
         }
 
         Row r = new Row();
@@ -62,8 +105,8 @@ public class DatabaseEngine {
             }
             r.getRow().put(colName, typeAccepted);
         }
-        t.addRow(r);;
-        storage.save(this.db);
+        t.addRow(r);
+        //storage.save(this.db); -> move to Controller!
         System.out.println("insert ok");
     }
 
@@ -77,7 +120,7 @@ public class DatabaseEngine {
             }
 
             Table t = db.getTable(cmd.getTableName());
-            ArrayList<Row> targets = resolveTargets(t, cmd.getWhereCol(), cmd.getWhereOp(), cmd.getWhereVal());
+            ArrayList<Row> targets = resolveWhere(t, cmd.getWhereCol(), cmd.getWhereOp(), cmd.getWhereVal());
             ArrayList<Row> toDelete = new ArrayList<>(targets);
             int deleted = 0;
             for (Row r : toDelete) {
@@ -85,7 +128,8 @@ public class DatabaseEngine {
                     deleted++;
                 }
             }
-            storage.save(db);
+            //storage.save(db);
+            System.out.println("Deleted: " + deleted);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             throw new IllegalArgumentException("Delete failed: " + e.getMessage());
         }
@@ -105,7 +149,7 @@ public class DatabaseEngine {
 
     }
 
-    private ArrayList<Row> resolveTargets(Table t, String whereCol, String whereOp, Object whereVal) {
+    private ArrayList<Row> resolveWhere(Table t, String whereCol, String whereOp, Object whereVal) {
         if (whereCol == null) {
             return new ArrayList<>(t.getRows());
         }

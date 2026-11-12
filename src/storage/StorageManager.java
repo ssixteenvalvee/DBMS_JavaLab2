@@ -2,7 +2,7 @@ package storage;
 
 import core.logic.Database;
 
-public class StorageManeger {
+public class StorageManager {
     // idk
 
     public void save(Database db) {
