@@ -8,7 +8,7 @@ public class InsertCmd implements Command {
     private final ArrayList<String> columns;
     private final Row values;
 
-    InsertCmd(String n, ArrayList<String> cols, Row vals) {
+    public InsertCmd(String n,ArrayList<String> cols, Row vals) {
         this.tName = n;
         this.columns = cols;
         this.values = vals;
