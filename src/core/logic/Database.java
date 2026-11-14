@@ -5,9 +5,9 @@ import java.util.LinkedHashMap;
 import java.util.NoSuchElementException;
 
 public class Database {
-    private LinkedHashMap<String, Table> tables = new LinkedHashMap<>();
+    private final LinkedHashMap<String, Table> tables = new LinkedHashMap<>();
 
-    public void CreateTable(Table t) {
+    public void createTable(Table t) {
         this.tables.put(t.tableName, t);
         System.out.println("[DB] CREATE TABLE OK.");
     }
@@ -21,10 +21,7 @@ public class Database {
     }
 
     public boolean hasTable(String tName) {
-        if (this.tables.containsKey(tName)) {
-            return true;
-        }
-        return false;
+        return this.tables.containsKey(tName);
     }
 
     public boolean dropTable(String tName) {

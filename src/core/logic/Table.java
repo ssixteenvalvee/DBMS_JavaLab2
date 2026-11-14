@@ -48,6 +48,17 @@ public class Table {
         return PK_COL;
     }
 
+    public boolean hasIndex(String column) {
+        return indexes.containsKey(column);
+    }
+    public Index getIndex(String column) {
+        Index idx = indexes.get(column);
+        if (idx == null) {
+            throw new IllegalArgumentException("No index on column: " + column);
+        }
+        return idx;
+    }
+
     public void addCol(String key, Column col) {
         this.scheme.put(key, col);
     }
@@ -71,19 +82,22 @@ public class Table {
     public void createIndex(String colName) {
         Column col = scheme.get(colName);
         if (col == null) {
-            throw new IllegalArgumentException("fuck you.");
+            throw new IllegalArgumentException("No such column: " + colName);
         }
         if (indexes.containsKey(colName)) {
             throw new IllegalArgumentException("Index already exists: " + colName);
         }
         
-        Index tree = new TreeIndex(col.getType().comparator());
+        Index tree = new TreeIndex(col.getType().getComparator());
+        for (Row r : rows) {
+            Object v = r.getRow().get(colName);
+            if (v != null) tree.put(v, r);
+        }
+        indexes.put(colName, tree);
     }
 
     public void addRow(Row toAdd) {
         String pk = PK_COL;
-        if (pk == null)
-            throw new IllegalStateException("Table has no PK column");
         if (scheme.get(pk).getType() != DataType.INT)
             throw new IllegalStateException("Autoincrement requires INT PK: " + pk);
 
@@ -97,9 +111,12 @@ public class Table {
         }
 
         // if some columns are absent -> make them null
+        LinkedHashMap<String, Object> normalized = new LinkedHashMap<>();
         for (String col : scheme.keySet()) {
-            data.putIfAbsent(col, null);
+            normalized.put(col, data.getOrDefault(col, null));
         }
+        toAdd.setrow(normalized);
+        data = normalized;
 
         // type check; null == "not given"
         for (Map.Entry<String, Column> e : scheme.entrySet()) {
