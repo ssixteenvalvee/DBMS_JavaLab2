@@ -211,8 +211,14 @@ public class DatabaseEngine {
             throw new IllegalArgumentException("Unknown column: " + whereCol);
         }
         Object typedVal = whereColumn.accepts(whereVal) ? whereVal : whereColumn.convertValidate(whereVal.toString());
-        if ("=".equals(whereOp) && t.hasIndex(whereCol)) { // o log n yay :P
-            return t.getIndex(whereCol).get(typedVal);
+        if (t.hasIndex(whereCol)) {
+            if ("=".equals(whereOp)) {
+                return t.getIndex(whereCol).get(typedVal);
+            }
+            if ("<".equals(whereOp) || "<=".equals(whereOp)
+                    || ">".equals(whereOp) || ">=".equals(whereOp)) {
+                return t.getIndex(whereCol).getRange(typedVal, whereOp);
+            }
         }
         ArrayList<Row> out = new ArrayList<>();
         for (Row r : t.getRows()) {
