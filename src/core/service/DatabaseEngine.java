@@ -4,12 +4,10 @@ import core.logic.Column;
 import core.logic.Database;
 import core.logic.Row;
 import core.logic.Table;
-import parser.cmd.DeleteCmd;
-import parser.cmd.InsertCmd;
-import parser.cmd.SelectCmd;
-import parser.cmd.UpdateCmd;
+import parser.cmd.*;
 import storage.StorageManager;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,7 +17,7 @@ public class DatabaseEngine {
     private final Database db;
     private final StorageManager storage;
 
-    DatabaseEngine(Database database, StorageManager st) {
+    public DatabaseEngine(Database database, StorageManager st) {
         this.db = database;
         this.storage = st;
     }
@@ -174,12 +172,34 @@ public class DatabaseEngine {
         return new QResult(true, "ok", resultRows, resultScheme);
     }
 
-    public void createTable() {
-
+    public QResult createTable(CreateTableCmd cmd) {
+        String name = cmd.table();
+        if (db.hasTable(name)) {
+            throw new IllegalArgumentException("Table already exists: " + name);
+        }
+        Table t = new Table(name, cmd.getScheme());
+        db.createTable(t);
+        return new QResult(true, "Table created: " + name);
     }
 
-    public void dropTable() {
+    public QResult dropTable(DropTableCmd cmd) {
+        String name = cmd.table();
+        if (!db.hasTable(name)) {
+            throw new IllegalArgumentException("No such table: " + name);
+        }
+        db.dropTable(name);
+        try {
+            storage.deleteTableFile(name);
+        } catch (IOException e) {
+            System.err.println("[DBENG] dropTable: could not delete file: " + e.getMessage());
+        }
+        return new QResult(true, "Table dropped: " + name);
+    }
 
+    public QResult createIndex(CreateIndexCmd cmd) {
+        Table t = db.getTable(cmd.table());
+        t.createIndex(cmd.getColumn());
+        return new QResult(true, "Index created: " + cmd.getIndexName() + " on " + cmd.table() + "(" + cmd.getColumn() + ")");
     }
 
     private ArrayList<Row> resolveWhere(Table t, String whereCol, String whereOp, Object whereVal) {
