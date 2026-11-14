@@ -186,12 +186,17 @@ public class DatabaseEngine {
         if (whereCol == null) {
             return new ArrayList<>(t.getRows());
         }
+        Column whereColumn = t.getScheme().get(whereCol);
+        if (whereColumn == null) {
+            throw new IllegalArgumentException("Unknown column: " + whereCol);
+        }
+        Object typedVal = whereColumn.accepts(whereVal) ? whereVal : whereColumn.convertValidate(whereVal.toString());
         if ("=".equals(whereOp) && t.hasIndex(whereCol)) { // o log n yay :P
-            return t.getIndex(whereCol).get(whereVal);
+            return t.getIndex(whereCol).get(typedVal);
         }
         ArrayList<Row> out = new ArrayList<>();
         for (Row r : t.getRows()) {
-            if (matches(t, r, whereCol, whereOp, whereVal)) {
+            if (matches(t, r, whereCol, whereOp, typedVal)) {
                 out.add(r);
             }
         }

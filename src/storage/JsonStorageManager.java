@@ -71,7 +71,7 @@ public class JsonStorageManager implements StorageManager {
                 String tableName = fileName.substring(0, fileName.length() - ".json".length());
                 Table table = loadTable(tableName);
                 if (table != null) {
-                    db.CreateTable(table);
+                    db.createTable(table);
                 }
             }
         }
