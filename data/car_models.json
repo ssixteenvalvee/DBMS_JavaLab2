@@ -1,0 +1,18 @@
+{
+  "tableName": "car_models",
+  "nextId": 4,
+  "scheme": [
+    {"colName": "id", "type": "INT", "isPK": true},
+    {"colName": "brand", "type": "STRING", "isPK": false},
+    {"colName": "model", "type": "STRING", "isPK": false},
+    {"colName": "release_date", "type": "DATE", "isPK": false},
+    {"colName": "base_price", "type": "FLOAT", "isPK": false}
+  ],
+  "rows": [
+    {"id": 1, "brand": "Toyota", "model": "Camry", "release_date": "2023-01-15", "base_price": 25000.0},
+    {"id": 2, "brand": "BMW", "model": "X5", "release_date": "2022-11-10", "base_price": 55000.0},
+    {"id": 3, "brand": "McLaren", "model": "Senna", "release_date": "2018-09-10", "base_price": 1200000.0}
+  ],
+  "indexes": [
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "tableName": "car_instances",
+  "nextId": 14,
+  "scheme": [
+    {"colName": "id", "type": "INT", "isPK": true},
+    {"colName": "model_id", "type": "INT", "isPK": false},
+    {"colName": "vin", "type": "STRING", "isPK": false},
+    {"colName": "color", "type": "STRING", "isPK": false},
+    {"colName": "mileage", "type": "INT", "isPK": false},
+    {"colName": "price", "type": "FLOAT", "isPK": false},
+    {"colName": "is_available", "type": "BOOLEAN", "isPK": false}
+  ],
+  "rows": [
+    {"id": 10, "model_id": 1, "vin": "VIN001", "color": "White", "mileage": 15000, "price": 24000.0, "is_available": true},
+    {"id": 11, "model_id": 1, "vin": "VIN002", "color": "Black", "mileage": 20000, "price": 23000.0, "is_available": true},
+    {"id": 12, "model_id": 2, "vin": "VIN003", "color": "Red", "mileage": 5000, "price": 54000.0, "is_available": false},
+    {"id": 13, "model_id": 3, "vin": "MC3M12N4BV2M00001", "color": "Vision Victory Gray", "mileage": 2585, "price": 1200000.0, "is_available": true}
+  ],
+  "indexes": [
+  ]
+}
