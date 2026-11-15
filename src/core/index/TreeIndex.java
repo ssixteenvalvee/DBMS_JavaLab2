@@ -10,29 +10,31 @@ TreeMap это дерево, а поиск по дереву(если оно б�
 
 public class TreeIndex implements Index {
     public TreeMap<Object, ArrayList<Row>> tree;
+    private final HashMap<Object, ArrayList<Row>> lookup;
 
     public TreeIndex(Comparator<Object> comparator) {
         this.tree = new TreeMap<>(comparator);
+        this.lookup = new HashMap<>();
     }
 
     /**
      */
     @Override
     public void put(Object key, Row row) {
-        if (!this.tree.containsKey(key)) {
-            ArrayList<Row> rows = new ArrayList<>();
-            rows.add(row);
-            this.tree.put(key, rows);
-            return;
+        ArrayList<Row> rows = lookup.get(key);
+        if (rows == null) {
+            rows = new ArrayList<>();
+            tree.put(key, rows);
+            lookup.put(key, rows);
         }
-        this.tree.get(key).add(row);
+        rows.add(row);
     }
 
     /**
      */
     @Override
     public void remove(Object key, Row toRemove) {
-        ArrayList<Row> result = tree.getOrDefault(key, null);
+        ArrayList<Row> result = lookup.get(key);
         if (result == null) {
             throw new IllegalArgumentException("[TREEIDX] Exception: No such key: " + key);
         }
@@ -41,6 +43,7 @@ public class TreeIndex implements Index {
         }
         if (result.isEmpty()) {
             tree.remove(key);
+            lookup.remove(key);
         }
     }
 
@@ -49,10 +52,27 @@ public class TreeIndex implements Index {
      */
     @Override
     public ArrayList<Row> get(Object key) {
-        ArrayList<Row> rows = tree.getOrDefault(key, null);
+        ArrayList<Row> rows = lookup.get(key);
         if (rows == null) {
             return new ArrayList<>();
         }
         return new ArrayList<>(rows);
+    }
+
+    @Override
+    public ArrayList<Row> getRange(Object key, String operator) {
+        NavigableMap<Object, ArrayList<Row>> range;
+        switch (operator) {
+            case "<":  range = tree.headMap(key, false); break;
+            case "<=": range = tree.headMap(key, true); break;
+            case ">":  range = tree.tailMap(key, false); break;
+            case ">=": range = tree.tailMap(key, true); break;
+            default: throw new IllegalArgumentException("Unknown range operator: " + operator);
+        }
+        ArrayList<Row> result = new ArrayList<>();
+        for (ArrayList<Row> rows : range.values()) {
+            result.addAll(rows);
+        }
+        return result;
     }
 }

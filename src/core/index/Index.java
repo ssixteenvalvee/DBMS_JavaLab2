@@ -7,4 +7,5 @@ public interface Index {
     void put(Object key, Row row);
     void remove(Object key, Row toRemove);
     ArrayList<Row> get(Object key);
+    ArrayList<Row> getRange(Object key, String operator);
 }
